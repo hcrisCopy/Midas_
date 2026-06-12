@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+
+output/
+.pytest_cache/
+
+# Model weights are intentionally kept outside MyCode in ../weights.
+*.pt
+*.pth
+*.onnx
+*.bin
+*.xml
+*.part
