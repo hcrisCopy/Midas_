@@ -16,26 +16,10 @@ import numpy as np
 import torch
 
 import utils
-from midas.model_loader import load_model
+from midas.model_loader import DEFAULT_MODEL_PATH, MODEL_TYPE, load_model
 
 
 ROOT = Path(__file__).resolve().parent
-
-DEFAULT_WEIGHT_PATHS = {
-    "dpt_beit_large_512": "../weights/dpt_beit_large_512.pt",
-    "dpt_beit_large_384": "../weights/dpt_beit_large_384.pt",
-    "dpt_beit_base_384": "../weights/dpt_beit_base_384.pt",
-    "dpt_swin2_large_384": "../weights/dpt_swin2_large_384.pt",
-    "dpt_swin2_base_384": "../weights/dpt_swin2_base_384.pt",
-    "dpt_swin2_tiny_256": "../weights/dpt_swin2_tiny_256.pt",
-    "dpt_swin_large_384": "../weights/dpt_swin_large_384.pt",
-    "dpt_next_vit_large_384": "../weights/dpt_next_vit_large_384.pt",
-    "dpt_levit_224": "../weights/dpt_levit_224.pt",
-    "dpt_large_384": "../weights/dpt_large_384.pt",
-    "dpt_hybrid_384": "../weights/dpt_hybrid_384.pt",
-    "midas_v21_384": "../weights/midas_v21_384.pt",
-    "midas_v21_small_256": "../weights/midas_v21_small_256.pt",
-}
 
 IMAGE_EXTENSIONS = (".bmp", ".dib", ".jpeg", ".jpg", ".jpe", ".jp2", ".png", ".webp", ".tif", ".tiff")
 
@@ -50,7 +34,7 @@ def resolve_path(path_text: str) -> Path:
     return (ROOT / path).resolve()
 
 
-def process(device, model, model_type, image, input_size, target_size, optimize, use_camera=False):
+def process(device, model, image, input_size, target_size, optimize, use_camera=False):
     """Run the MiDaS forward pass and interpolate to the original image size.
 
     This is intentionally the same Torch path as the author's `run.py`:
@@ -116,7 +100,6 @@ def run(
     input_path: Path,
     output_path: Path,
     model_path: Path,
-    model_type: str = "midas_v21_small_256",
     optimize: bool = False,
     side: bool = False,
     height: int | None = None,
@@ -136,11 +119,10 @@ def run(
     if not model_path.exists():
         raise FileNotFoundError(
             f"Cannot find weights: {model_path}\n"
-            f"Run `python download_weights.py --model_type {model_type}` from MyCode, "
-            "or pass --model_weights to an existing .pt file."
+            "Run `python download_weights.py` from MyCode, or pass --model_weights to an existing .pt file."
         )
 
-    model, transform, net_w, net_h = load_model(device, str(model_path), model_type, optimize, height, square)
+    model, transform, net_w, net_h = load_model(device, str(model_path), optimize, height, square)
 
     image_names = iter_images(input_path)
     if not image_names:
@@ -159,7 +141,6 @@ def run(
             prediction = process(
                 device,
                 model,
-                model_type,
                 image,
                 (net_w, net_h),
                 original_image_rgb.shape[1::-1],
@@ -167,7 +148,7 @@ def run(
                 False,
             )
 
-        filename = output_path / f"{image_name.stem}-{model_type}"
+        filename = output_path / f"{image_name.stem}-{MODEL_TYPE}"
         if not side:
             utils.write_depth(str(filename), prediction, grayscale, bits=2)
         else:
@@ -184,11 +165,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Torch MiDaS inference for handoff code.")
     parser.add_argument("--input_path", default="data", help="Folder with input images, relative to MyCode by default.")
     parser.add_argument("--output_path", default="output", help="Folder for depth outputs, relative to MyCode by default.")
-    parser.add_argument("--model_type", default="midas_v21_small_256", choices=sorted(DEFAULT_WEIGHT_PATHS))
     parser.add_argument(
         "--model_weights",
         default=None,
-        help="Path to a .pt weight file. Defaults to ../weights/<model_type>.pt relative to MyCode.",
+        help="Path to midas_v21_small_256.pt. Defaults to ../weights/midas_v21_small_256.pt relative to MyCode.",
     )
     parser.add_argument("--side", action="store_true", help="Write RGB and depth visualization side by side.")
     parser.add_argument("--optimize", action="store_true", help="Use half-float optimization on CUDA.")
@@ -207,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    model_weights = args.model_weights or DEFAULT_WEIGHT_PATHS[args.model_type]
+    model_weights = args.model_weights or DEFAULT_MODEL_PATH
 
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
@@ -216,7 +196,6 @@ def main() -> None:
         input_path=resolve_path(args.input_path),
         output_path=resolve_path(args.output_path),
         model_path=resolve_path(model_weights),
-        model_type=args.model_type,
         optimize=args.optimize,
         side=args.side,
         height=args.height,

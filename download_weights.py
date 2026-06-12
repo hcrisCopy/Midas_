@@ -1,4 +1,4 @@
-"""Download MiDaS weights to the sibling `../weights` folder."""
+"""Download the MiDaS v2.1 small Torch weight to the sibling `../weights` folder."""
 
 from __future__ import annotations
 
@@ -10,26 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_OUTPUT_DIR = ROOT.parent / "weights"
-
-MODEL_URLS = {
-    "dpt_beit_large_512": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_beit_large_512.pt"],
-    "dpt_beit_large_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_beit_large_384.pt"],
-    "dpt_beit_base_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_beit_base_384.pt"],
-    "dpt_swin2_large_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_swin2_large_384.pt"],
-    "dpt_swin2_base_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_swin2_base_384.pt"],
-    "dpt_swin2_tiny_256": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_swin2_tiny_256.pt"],
-    "dpt_swin_large_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_swin_large_384.pt"],
-    "dpt_next_vit_large_384": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_next_vit_large_384.pt"],
-    "dpt_levit_224": ["https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_levit_224.pt"],
-    "dpt_large_384": ["https://github.com/isl-org/MiDaS/releases/download/v3/dpt_large_384.pt"],
-    "dpt_hybrid_384": ["https://github.com/isl-org/MiDaS/releases/download/v3/dpt_hybrid_384.pt"],
-    "midas_v21_384": ["https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_384.pt"],
-    "midas_v21_small_256": ["https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt"],
-    "openvino_midas_v21_small_256": [
-        "https://github.com/isl-org/MiDaS/releases/download/v3_1/openvino_midas_v21_small_256.xml",
-        "https://github.com/isl-org/MiDaS/releases/download/v3_1/openvino_midas_v21_small_256.bin",
-    ],
-}
+WEIGHT_URL = "https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt"
 
 
 def download(url: str, output_path: Path, overwrite: bool = False) -> None:
@@ -61,8 +42,7 @@ def download(url: str, output_path: Path, overwrite: bool = False) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Download MiDaS model weights.")
-    parser.add_argument("--model_type", default="midas_v21_small_256", choices=sorted(MODEL_URLS))
+    parser = argparse.ArgumentParser(description="Download MiDaS v2.1 small Torch weight.")
     parser.add_argument("--output_dir", default=str(DEFAULT_OUTPUT_DIR), help="Defaults to ../weights beside MyCode.")
     parser.add_argument("--overwrite", action="store_true")
     return parser
@@ -74,8 +54,7 @@ def main() -> None:
     if not output_dir.is_absolute():
         output_dir = (ROOT / output_dir).resolve()
 
-    for url in MODEL_URLS[args.model_type]:
-        download(url, output_dir / url.rsplit("/", 1)[-1], overwrite=args.overwrite)
+    download(WEIGHT_URL, output_dir / "midas_v21_small_256.pt", overwrite=args.overwrite)
 
 
 if __name__ == "__main__":
