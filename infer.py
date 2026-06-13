@@ -113,7 +113,7 @@ def run(
     if device_name == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(
             "CUDA is not available in this Python environment. "
-            "Install the CUDA 12.4 GPU environment from environment.yml, "
+            "Follow README.md to install PyTorch with CUDA 12.4 before running `pip install -r requirements.txt`, "
             "or run on a machine with a supported NVIDIA driver/GPU."
         )
 
