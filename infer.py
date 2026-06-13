@@ -105,15 +105,19 @@ def run(
     height: int | None = None,
     square: bool = False,
     grayscale: bool = False,
-    device_name: str = "auto",
+    device_name: str = "cuda",
 ) -> None:
     """Compute MiDaS relative depth maps for all images in `input_path`."""
     print("Initialize")
 
-    if device_name == "auto":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device(device_name)
+    if device_name == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is not available in this Python environment. "
+            "Install the CUDA 12.4 GPU environment from environment.yml, "
+            "or run on a machine with a supported NVIDIA driver/GPU."
+        )
+
+    device = torch.device(device_name)
     print(f"Device: {device}")
 
     if not model_path.exists():
@@ -180,7 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--square", action="store_true", help="Resize to square encoder input when supported.")
     parser.add_argument("--grayscale", action="store_true", help="Write grayscale depth PNG instead of inferno colormap.")
-    parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"], help="Inference device.")
+    parser.add_argument("--device", default="cuda", choices=["cuda"], help="Inference device. This handoff uses CUDA GPU only.")
     return parser
 
 

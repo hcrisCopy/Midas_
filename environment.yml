@@ -1,14 +1,15 @@
-name: midas-mycode
+name: midas-v21-small-cu124
 channels:
   - pytorch
+  - nvidia
   - defaults
 dependencies:
   - python=3.10.8
-  - pytorch=1.13.0
-  - torchvision=0.14.0
-  - cpuonly
+  - pytorch=2.5.1
+  - torchvision=0.20.1
+  - pytorch-cuda=12.4
   - pip=22.3.1
-  - numpy=1.23.4
+  - numpy=1.26.4
   - pip:
       - opencv-python==4.6.0.66
       - imutils==0.5.4

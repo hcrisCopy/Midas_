@@ -1,8 +1,8 @@
-# MiDaS v2.1 Small Torch 推理交接说明
+# MiDaS v2.1 Small Torch GPU 推理交接说明
 
-这个 `MyCode` 文件夹只保留 **MiDaS v2.1 small**，也就是作者提供的最小 PyTorch 权重 `midas_v21_small_256.pt`。本交接包不考虑 DPT、MiDaS v3/v3.1、大模型、ONNX、OpenVINO 或移动端版本。
+这个 `MyCode` 文件夹只保留 **MiDaS v2.1 small**，也就是作者提供的最小 PyTorch 权重 `midas_v21_small_256.pt`。本交接包只考虑 **GPU + CUDA 12.4** 环境，不提供 CPU、ONNX、OpenVINO、MiDaS v3/v3.1 或其它大模型路径。
 
-目标是：只上传 `MyCode` 到 GitHub；权重文件不上传，按本文下载到 `MyCode` 同级的 `weights/`；接手者即可跑通 `data/` 中图片的 Torch 推理，并可继续基于 small 模型改训练代码。
+目标是：只上传 `MyCode` 到 GitHub；权重文件不上传，按本文下载到 `MyCode` 同级的 `weights/`；接手者即可在 CUDA 12.4 GPU 环境中跑通 `data/` 图片的 Torch 推理，并可继续基于 small 模型改训练代码。
 
 ## 1. 模型理解
 
@@ -15,6 +15,7 @@ MiDaS 做的是单目相对深度估计：输入一张 RGB 图，输出同尺寸
 - encoder：`efficientnet_lite3`
 - decoder：MiDaS small 的 RefineNet 风格融合结构
 - 默认 encoder 输入上界：`256x256`，保持长宽比并对齐到 32 的倍数
+- GPU 运行环境：PyTorch `2.5.1` + `pytorch-cuda=12.4`
 - 代码路径：`midas/midas_net_custom.py`、`midas/blocks.py`、`midas/model_loader.py`
 
 `midas/` 中的代码已经收窄到 small 模型实际需要的分支。没有保留其它模型版本代码，避免交接时混淆。
@@ -29,8 +30,7 @@ MiDaS-handoff/
 │  ├─ README.md
 │  ├─ infer.py
 │  ├─ download_weights.py
-│  ├─ environment-cpu.yml
-│  ├─ environment-cu117.yml
+│  ├─ environment.yml
 │  ├─ utils.py
 │  ├─ midas/
 │  │  ├─ base_model.py
@@ -51,7 +51,25 @@ MiDaS-handoff/
 
 `weights/` 不能放进 GitHub；`.gitignore` 已经忽略 `*.pt`、`output/` 等生成物。默认权重路径是 `../weights/midas_v21_small_256.pt`。
 
-## 3. 创建环境
+## 3. GPU/CUDA 12.4 要求
+
+需要一张 NVIDIA GPU，以及支持 CUDA 12.4 runtime 的 NVIDIA 驱动。一般来说，驱动支持的 CUDA 版本等于或高于 12.4 即可；不需要单独安装系统级 CUDA Toolkit，也不需要 `nvcc`，因为 conda 环境会安装 PyTorch 所需 CUDA runtime。
+
+在 Anaconda Prompt 或终端中检查：
+
+```bat
+nvidia-smi
+```
+
+如果输出中能看到 NVIDIA GPU，并且 `CUDA Version` 是 `12.4` 或更高，就可以使用本环境。示例：
+
+```text
+Driver Version: 560.81    CUDA Version: 12.6
+```
+
+这表示驱动可运行 CUDA 12.4 的 PyTorch 包。
+
+## 4. 创建环境
 
 在 Anaconda Prompt 里进入 `MyCode`：
 
@@ -59,25 +77,46 @@ MiDaS-handoff/
 cd /d D:\your_path\MiDaS-handoff\MyCode
 ```
 
-没有 NVIDIA GPU 或只想先跑通 CPU：
+创建 CUDA 12.4 GPU 环境：
 
 ```bat
-conda env create -f environment-cpu.yml
-conda activate midas-mycode
+conda env create -f environment.yml
+conda activate midas-v21-small-cu124
 ```
 
-有 NVIDIA GPU 且本机驱动支持 CUDA 11.7：
+确认 PyTorch 能看到 GPU：
 
 ```bat
-conda env create -f environment-cu117.yml
-conda activate midas-mycode-cu117
+python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
 ```
 
-依赖版本沿用作者项目的核心组合：Python 3.10.8、PyTorch 1.13.0、torchvision 0.14.0、opencv-python 4.6.0.66、timm 0.6.12、einops 0.6.0。不要直接用 Python 3.13 跑，`timm==0.6.12` 在过新的 Python 上可能报 dataclass 兼容错误。
+期望看到：
+
+```text
+2.5.1
+12.4
+True
+你的 NVIDIA GPU 名称
+```
+
+如果 `torch.cuda.is_available()` 是 `False`，请先检查 NVIDIA 驱动和 `nvidia-smi`，不要继续跑推理。
 
 第一次运行时，作者 small 模型代码会通过 `torch.hub` 加载 EfficientNet-Lite3 的 hub 代码。这是原始 PyTorch small 模型实现的一部分。
 
-## 4. 下载权重
+本机验证环境：
+
+```text
+GPU: NVIDIA GeForce RTX 4070 Laptop GPU
+NVIDIA Driver: 560.81
+nvidia-smi CUDA Version: 12.6
+PyTorch: 2.5.1
+torch.version.cuda: 12.4
+torch.cuda.is_available(): True
+```
+
+说明：`nvidia-smi` 显示的 CUDA Version 是驱动支持的最高 CUDA runtime 能力。这里是 12.6，高于 12.4，因此可以运行 `pytorch-cuda=12.4`。本机没有 `nvcc` 不影响推理，因为本项目不编译自定义 CUDA 算子。
+
+## 5. 下载权重
 
 在 `MyCode` 目录运行：
 
@@ -99,7 +138,7 @@ https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt
 
 然后把文件放到 `MyCode` 同级的 `weights/` 文件夹中。
 
-## 5. 跑通推理
+## 6. 跑通 GPU 推理
 
 在 `MyCode` 目录运行：
 
@@ -111,6 +150,7 @@ python infer.py
 
 - 输入：`data/` 下所有常见图片格式。
 - 模型：固定为 `midas_v21_small_256`。
+- 设备：固定为 `cuda`。
 - 权重：`../weights/midas_v21_small_256.pt`。
 - 输出：`output/`。
 
@@ -129,37 +169,27 @@ output/1-midas_v21_small_256.pfm
 
 `.png` 是归一化后的可视化深度图，默认使用 inferno colormap；`.pfm` 是 float32 原始相对深度输出，更适合后续训练、评估或数值处理。
 
-常用参数：
-
-```bat
-python infer.py --side
-python infer.py --grayscale
-python infer.py --device cpu
-python infer.py --device cuda --optimize
-python infer.py --height 256
-```
-
-`--side` 会输出原图和深度图拼接图；`--grayscale` 会写 16-bit 灰度 PNG；`--height` 会覆盖 small 模型默认 encoder 输入高度，一般保持默认即可。
-
-## 6. 已验证结果
-
-本机已用 `environment-cpu.yml` 创建的 `midas-mycode` 环境验证：
+本机已用 `midas-v21-small-cu124` 环境验证：
 
 ```text
-python infer.py --device cpu
+python infer.py
+Device: cuda
 Model loaded, number of parameters = 21M
 处理 data/1.png 到 data/5.png 共 5 张图片
 生成 output/ 下 5 个 .png 和 5 个 .pfm
 PFM 均为 float32，尺寸与原图一致，数值均为有限值
 ```
 
-另外生成了 5 张可视化横向拼接图：
+常用参数：
 
-```text
-output/depth_visualizations_row.png
+```bat
+python infer.py --side
+python infer.py --grayscale
+python infer.py --optimize
+python infer.py --height 256
 ```
 
-该拼接图只是展示用，不是推理必须产物。
+`--side` 会输出原图和深度图拼接图；`--grayscale` 会写 16-bit 灰度 PNG；`--optimize` 会在 CUDA 上启用 half-float 推理；`--height` 会覆盖 small 模型默认 encoder 输入高度，一般保持默认即可。
 
 ## 7. 推理逻辑
 
@@ -198,6 +228,7 @@ output/depth_visualizations_row.png
 
 - 是否只考虑 MiDaS v2.1 small：是，脚本和 README 都只服务 `midas_v21_small_256`。
 - 是否只上传 `MyCode` 就够：是。代码、README、环境文件、测试图片都在 `MyCode`；权重按 README 下载到同级 `weights/`。
+- 是否只使用 GPU/CUDA 12.4：是。`environment.yml` 使用 `pytorch-cuda=12.4`，`infer.py` 默认且仅允许 `cuda`。
 - 是否使用 Torch：是。默认推理使用 `.pt` 权重和 PyTorch 前向，不走 ONNX/OpenVINO。
 - 是否下载最小权重：是，默认下载并使用 `midas_v21_small_256.pt`。
 - 是否改了 small 模型结构：没有。只删除了交接暂不需要的其它模型分支，并保留 small 推理所需代码。
